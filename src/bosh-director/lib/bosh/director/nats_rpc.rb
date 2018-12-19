@@ -47,10 +47,11 @@ module Bosh::Director
       sanitized_log_message = sanitize_log_message(request)
       request_body = JSON.generate(request)
 
-      @logger.debug("SENT: #{subject_name} #{sanitized_log_message}") unless options['logging'] == false
+      @logger.debug("$$$$$ (thread #{Thread.current.object_id}) SENT: #{subject_name} #{sanitized_log_message}") unless options['logging'] == false
 
       EM.schedule do
         subscribe_inbox
+        @logger.debug("$$$$$ (thread #{Thread.current.object_id}) nats.before.publish: #{subject_name} #{sanitized_log_message}") unless options['logging'] == false
         if @handled_response
           nats.publish(subject_name, request_body)
         else
@@ -58,6 +59,7 @@ module Bosh::Director
             nats.publish(subject_name, request_body)
           end
         end
+        @logger.debug("$$$$$ (thread #{Thread.current.object_id}) nats.after.publish: #{subject_name} #{sanitized_log_message}") unless options['logging'] == false
       end
       request_id
     end
@@ -119,6 +121,7 @@ module Bosh::Director
         @lock.synchronize do
           if @subject_id.nil?
             @subject_id = client.subscribe("#{@inbox_name}.>") do |message, _, subject|
+              @logger.debug("$$$$$ RECEIVED: #{subject} #{message}")
               @handled_response = true
               handle_response(message, subject)
             end
