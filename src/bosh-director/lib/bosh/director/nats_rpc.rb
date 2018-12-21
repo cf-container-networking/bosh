@@ -27,9 +27,9 @@ module Bosh::Director
     end
 
     # Publishes a payload (encoded as JSON) without expecting a response
-    def send_message(client, payload)
+    def send_message(client, payload, logger)
       message = JSON.generate(payload)
-      @logger.debug("SENT: #{client} #{message}")
+      @logger.debug("$$$$$ MESSAGE SENT: #{client} #{message}")
 
       EM.schedule do
         nats.publish(client, message)
@@ -47,11 +47,10 @@ module Bosh::Director
       sanitized_log_message = sanitize_log_message(request)
       request_body = JSON.generate(request)
 
-      @logger.debug("$$$$$ (thread #{Thread.current.object_id}) SENT: #{subject_name} #{sanitized_log_message}") unless options['logging'] == false
+      @logger.debug("$$$$$ (thread #{Thread.current.object_id}) REQUEST SENT: #{subject_name} #{sanitized_log_message}")
 
       EM.schedule do
         subscribe_inbox
-        @logger.debug("$$$$$ (thread #{Thread.current.object_id}) nats.before.publish: #{subject_name} #{sanitized_log_message}") unless options['logging'] == false
         if @handled_response
           nats.publish(subject_name, request_body)
         else
@@ -59,7 +58,7 @@ module Bosh::Director
             nats.publish(subject_name, request_body)
           end
         end
-        @logger.debug("$$$$$ (thread #{Thread.current.object_id}) nats.after.publish: #{subject_name} #{sanitized_log_message}") unless options['logging'] == false
+        @logger.debug("$$$$$ (thread #{Thread.current.object_id}) REQUEST PUBLISHED: #{subject_name} #{sanitized_log_message}")
       end
       request_id
     end
@@ -121,7 +120,6 @@ module Bosh::Director
         @lock.synchronize do
           if @subject_id.nil?
             @subject_id = client.subscribe("#{@inbox_name}.>") do |message, _, subject|
-              @logger.debug("$$$$$ RECEIVED: #{subject} #{message}")
               @handled_response = true
               handle_response(message, subject)
             end
@@ -134,7 +132,7 @@ module Bosh::Director
       begin
         request_id = subject.split(".").last
         callback, options = @lock.synchronize { @requests.delete(request_id) }
-        @logger.debug("RECEIVED: #{subject} #{message}") if (options && options['logging'])
+        @logger.debug("$$$$$ RECEIVED: #{subject} #{message}")
         if callback
           message = message.empty? ? nil : JSON.parse(message)
           callback.call(message)
