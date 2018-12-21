@@ -27,7 +27,7 @@ module Bosh::Director
     end
 
     # Publishes a payload (encoded as JSON) without expecting a response
-    def send_message(client, payload, logger)
+    def send_message(client, payload)
       message = JSON.generate(payload)
       @logger.debug("$$$$$ MESSAGE SENT: #{client} #{message}")
 
