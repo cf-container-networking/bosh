@@ -33,32 +33,8 @@ module Bosh::Director
 
       instances.each do |instance|
         pending.add(instance)
-        instance_to_request_id[instance] = agent_client(instance.agent_id,
-                                                        instance.name).sync_dns(blobstore_id, sha1, version) do |response|
-          valid_response = (response['value'] == VALID_SYNC_DNS_RESPONSE)
-
-          if valid_response
-            updated_rows = Models::AgentDnsVersion.where(agent_id: instance.agent_id).update(dns_version: version)
-
-            if updated_rows == 0
-              begin
-                Models::AgentDnsVersion.create(agent_id: instance.agent_id, dns_version: version)
-              rescue Sequel::UniqueConstraintViolation
-                Models::AgentDnsVersion.where(agent_id: instance.agent_id).update(dns_version: version)
-              end
-            end
-          end
-
-          lock.synchronize do
-            if valid_response
-              num_successful += 1
-            else
-              num_failed += 1
-              @logger.error("agent_broadcaster: sync_dns[#{instance.agent_id}]: received unexpected response #{response}")
-            end
-            pending.delete(instance)
-          end
-        end
+        dummy_client = agent_client(instance.agent_id, instance.name)
+        @logger.info("stub sync_dns")
       end
 
       @reactor_loop.queue do
